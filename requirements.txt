@@ -1,0 +1,9 @@
+transformers
+tokenizer
+datasets
+torch
+numpy
+matplotlib
+scipy
+json
+wandb
