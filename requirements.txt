@@ -1,9 +1,9 @@
 transformers
-tokenizer
+tokenizers
 datasets
 torch
 numpy
 matplotlib
 scipy
-json
 wandb
+tqdm
