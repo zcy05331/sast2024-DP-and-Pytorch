@@ -5,11 +5,6 @@ torch
 numpy
 matplotlib
 scipy
-<<<<<<< HEAD
-json
 wandb
 notebook
-=======
-wandb
 tqdm
->>>>>>> 791577e94612f0def7856481123c9557f29ce5d2
