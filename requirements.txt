@@ -6,4 +6,5 @@ numpy
 matplotlib
 scipy
 wandb
+notebook
 tqdm
