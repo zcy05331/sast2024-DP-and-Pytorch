@@ -1,11 +1,14 @@
-import torch
-from torch.utils.data import Dataset, DataLoader
-from tokenizers import Tokenizer
 import json
+
+import torch
+from tokenizers import Tokenizer
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 tokenizer = Tokenizer.from_file("tokenizer/tokenizer.json")
 tokenizer.enable_padding(length=256)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class MyDataSet(Dataset):
     def __init__(self, file: str):
@@ -34,6 +37,7 @@ test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=True)
 import torch
 import torch.nn as nn
 
+
 class MyModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -43,21 +47,22 @@ class MyModel(nn.Module):
         self.layer2 = nn.Linear(64*32, 16*16)
         self.ac2 = nn.ReLU()
         self.out = nn.Linear(16*16, 2)
-        
+
     def forward(self, data):
         hidden = self.emb(data).view(-1, 64*256)
         return self.out(self.ac2(self.layer2(self.ac1(self.layer1(hidden)))))
-    
-    
-model = MyModel().cuda()
+
+
+model = MyModel().to(device)
 
 from torch.optim import Adam
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer = Adam(model.parameters(), lr=1e-3)
 
-import wandb
 import numpy as np
+
+import wandb
 
 wandb.init(
     project="summer_guide",
@@ -71,8 +76,8 @@ wandb.init(
 
 for i in tqdm(range(3)):
     for batch, (X, y) in enumerate(train_loader):
-        pred = model(X.cuda())
-        loss = loss_fn(pred, y.cuda())
+        pred = model(X.to(device))
+        loss = loss_fn(pred, y.to(device))
 
         loss.backward()
         optimizer.step()
@@ -82,7 +87,7 @@ for i in tqdm(range(3)):
             total = 0
             with torch.no_grad():
                 for batch, (X, y_t) in enumerate(test_loader):
-                    pred_t = model(X.cuda())
+                    pred_t = model(X.to(device))
                     total += np.sum((torch.argmax(pred_t.cpu(), 1) == torch.argmax(y_t.cpu(), 1)).numpy())
             wandb.log(
                 {
@@ -92,5 +97,5 @@ for i in tqdm(range(3)):
                 }
             )
     torch.save(model, "results/model.pt")
-    
+
 wandb.finish()
