@@ -74,8 +74,9 @@ wandb.init(
     },
 )
 
-for i in tqdm(range(3)):
-    for batch, (X, y) in enumerate(train_loader):
+for i in range(3):
+    print(f"--------------iteration {i+1}----------------")
+    for batch, (X, y) in enumerate(tqdm(list(train_loader))):
         pred = model(X.to(device))
         loss = loss_fn(pred, y.to(device))
 
