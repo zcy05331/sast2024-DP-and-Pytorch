@@ -1,0 +1,8 @@
+pytorch
+torchvision
+torchaudio
+matplotlib
+scipy
+tokenizers
+tqdm
+wandb

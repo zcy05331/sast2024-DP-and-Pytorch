@@ -1,7 +1,13 @@
 import json
+import math
+import threading
 
+import numpy as np
 import torch
+import torch.nn as nn
+import wandb
 from tokenizers import Tokenizer
+from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
@@ -10,32 +16,51 @@ tokenizer.enable_padding(length=256)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+
+def deal_segment(inputlist, savelist):
+    for item in inputlist:
+        tmp_dict = json.loads(item)
+        savelist.append(
+            (
+                torch.tensor(tokenizer.encode(tmp_dict["content"]).ids[:256]),
+                torch.tensor(
+                    [1 - tmp_dict["label"], tmp_dict["label"]], dtype=torch.float32
+                ),
+            )
+        )
+
+
 class MyDataSet(Dataset):
     def __init__(self, file: str):
         self.data = []
-        self.label = []
-        with open(file, "r", encoding='utf-8') as fin:
-            print(f"load data {file}")
-            for line in tqdm(list(fin)):
-                tmp_dict = json.loads(line)
-                self.data.append(torch.tensor(tokenizer.encode(tmp_dict["content"]).ids[:256]))
-                self.label.append(torch.tensor([1-tmp_dict["label"], tmp_dict['label']], dtype=torch.float32))
-                
+        with open(file, "r", encoding="utf-8") as fin:
+            inputlist = list(fin)
+            tlist = [
+                threading.Thread(
+                    target=deal_segment,
+                    args=(
+                        inputlist[1000 * i : 1000 * (i + 1)],
+                        self.data,
+                    ),
+                )
+                for i in range(math.ceil(len(inputlist) / 1000))
+            ]
+            for t in tqdm(tlist):
+                t.start()
+            for t in tlist:
+                t.join()
+        fin.close()
+
     def __getitem__(self, index):
-        return self.data[index], self.label[index]
-    
+        return self.data[index]
+
     def __len__(self):
         return len(self.data)
 
 train_set = MyDataSet(file="dataset/train.jsonl")
 test_set = MyDataSet(file="dataset/test.jsonl")
-
-
 train_loader = DataLoader(dataset=train_set, batch_size=32, shuffle=True)
 test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=True)
-
-import torch
-import torch.nn as nn
 
 
 class MyModel(nn.Module):
@@ -52,17 +77,12 @@ class MyModel(nn.Module):
         hidden = self.emb(data).view(-1, 64*256)
         return self.out(self.ac2(self.layer2(self.ac1(self.layer1(hidden)))))
 
-
 model = MyModel().to(device)
 
-from torch.optim import Adam
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer = Adam(model.parameters(), lr=1e-3)
 
-import numpy as np
-
-import wandb
 
 wandb.init(
     project="summer_guide",
