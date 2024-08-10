@@ -117,6 +117,6 @@ for i in range(3):
                     "test_acc": total/20000
                 }
             )
-    torch.save(model.state_dict(), "results/model.pt")
+    torch.save(model.state_dict(), "result/model.pt")
 
 wandb.finish()
