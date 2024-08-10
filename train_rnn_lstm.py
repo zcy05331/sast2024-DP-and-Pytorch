@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 # Initialize tokenizer
-torch.manual_seed(42)
 tokenizer = Tokenizer.from_file("tokenizer/tokenizer.json")
 tokenizer.enable_padding(length=256)
 
@@ -69,9 +68,9 @@ class MyLSTMModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.emb = nn.Embedding(num_embeddings=50000, embedding_dim=64)
-        self.lstm = nn.LSTM(input_size=64, hidden_size=32, batch_first=True)
+        self.lstm = nn.LSTM(input_size=64, hidden_size=128, batch_first=True)
         # self.rnn = nn.RNN(input_size=64, hidden_size=8, num_layers=3, batch_first=True)
-        self.fc = nn.Linear(32, 2)
+        self.fc = nn.Linear(128, 2)
 
     def forward(self, data):
         emb_out = self.emb(data)
@@ -117,21 +116,21 @@ model._initialize_weights()
 
 # Loss function and optimizer
 loss_fn = nn.CrossEntropyLoss()
-optimizer = Adam(model.parameters(), lr=5e-3)
+optimizer = Adam(model.parameters(), lr=5e-4)
 # optimizer = SGD(model.parameters(), lr=1e-2, momentum=0.9, nesterov=True)
 
 # Initialize wandb
-wandb.init(
-    project="text_sentiment_classification",
-    config={
-        "learning_rate": 3e-3,
-        "architecture": "LSTM",
-        "dataset": "amazon-plarity",
-        "epochs": 10,
-    },
-)
+# wandb.init(
+#     project="text_sentiment_classification",
+#     config={
+#         "learning_rate": 5e-3,
+#         "architecture": "LSTM",
+#         "dataset": "amazon-plarity",
+#         "epochs": 10,
+#     },
+# )
     
-model.train()
+# model.train()
 
 # Training loop
 def train():
@@ -166,7 +165,7 @@ def train():
         torch.save(model.state_dict(), f"result/model_epoch_{epoch+1}.pt")
     wandb.finish()
 
-train()
+# train()
 # Inference after loading the saved model
 model.load_state_dict(torch.load("result/model_epoch_10.pt"))
 
@@ -175,9 +174,16 @@ def predict(text):
     encoded = torch.tensor(encoded).unsqueeze(0).to(device)
     model.eval()
     with torch.no_grad():
-        output = model(encoded)
+        output = torch.nn.functional.softmax(model(encoded), dim=-1)
         prediction = torch.argmax(output, 1).item()
+        print(output)
     return "Positive" if prediction == 1 else "Negative"
 
 # Example usage:
 print(predict("This movie was absolutely fantastic!"))
+sentence = "My lovely Pat has one of the GREAT voices of her generation. I have listened to this CD for YEARS and I still LOVE IT. When I'm in a good mood it makes me feel better. A bad mood just evaporates like sugar in the rain. This CD just oozes LIFE. Vocals are jusat STUUNNING and lyrics just kill. One of life's hidden gems. This is a desert isle CD in my book. Why she never made it big is just beyond me. Everytime I play this, no matter black, white, young, old, male, female EVERYBODY says one thing \"Who was that singing ?\""
+print(predict(sentence))
+
+while True:
+    text = input("Enter the text: ")
+    print(predict(text))
